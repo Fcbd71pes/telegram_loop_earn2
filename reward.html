@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EarnLoop – Verifying...</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e1a; --card:#111827; --accent:#00e5ff;
+    --accent2:#7c3aed; --gold:#f59e0b; --green:#10b981;
+    --red:#ef4444; --text:#f1f5f9; --muted:#64748b;
+    --border:rgba(255,255,255,0.07);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:var(--bg); color:var(--text);
+    font-family:'DM Sans',sans-serif;
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .card {
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:24px; padding:40px 30px;
+    text-align:center; max-width:360px; width:100%;
+  }
+  .icon { font-size:56px; margin-bottom:16px; }
+  h2 {
+    font-family:'Syne',sans-serif;
+    font-size:22px; font-weight:800; margin-bottom:8px;
+  }
+  p { color:var(--muted); font-size:14px; line-height:1.6; }
+  .spinner {
+    width:48px; height:48px;
+    border:3px solid var(--border);
+    border-top-color:var(--accent);
+    border-radius:50%;
+    animation:spin 0.8s linear infinite;
+    margin:20px auto;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .reward-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:rgba(245,158,11,0.15);
+    border:1px solid rgba(245,158,11,0.3);
+    padding:10px 20px; border-radius:100px;
+    font-family:'Syne',sans-serif; font-size:20px; font-weight:700;
+    color:var(--gold); margin:20px 0;
+  }
+  .btn {
+    display:block; width:100%;
+    background:linear-gradient(135deg,var(--accent),#0099cc);
+    color:#000; font-weight:700; font-size:15px;
+    border:none; border-radius:12px; padding:14px;
+    cursor:pointer; font-family:'Syne',sans-serif;
+    margin-top:16px; text-decoration:none;
+    transition:opacity 0.2s;
+  }
+  .btn:hover { opacity:0.85; }
+  .fail-btn {
+    background:rgba(239,68,68,0.15);
+    border:1px solid rgba(239,68,68,0.3);
+    color:#fca5a5;
+  }
+  .status-dot {
+    display:inline-block; width:8px; height:8px;
+    border-radius:50%; margin-right:6px;
+  }
+  .status-dot.ok { background:var(--green); }
+  .status-dot.bad { background:var(--red); }
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="spinner"></div>
+  <h2>Verifying your ad view...</h2>
+  <p>Please wait while we confirm your activity.</p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, get, update, push }
+  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCGqA4NAwLlVuiJ3STGHVAK-NTUChVIa1g",
+  authDomain: "telegram-loop-earn.firebaseapp.com",
+  projectId: "telegram-loop-earn",
+  storageBucket: "telegram-loop-earn.firebasestorage.app",
+  messagingSenderId: "471885155168",
+  appId: "1:471885155168:web:db96e8b861c4cc40d42c05",
+  databaseURL: "https://telegram-loop-earn-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const tg = window.Telegram?.WebApp;
+tg?.ready();
+
+const card = document.getElementById('card');
+const MIN_TIME = 60 * 1000; // 60 seconds minimum
+
+async function verify() {
+  let tgUser = tg?.initDataUnsafe?.user;
+  if (!tgUser) tgUser = { id: 999999, first_name: 'Test' };
+
+  const userId = String(tgUser.id);
+  const userRef = ref(db, `users/${userId}`);
+  const snap = await get(userRef);
+
+  if (!snap.exists()) {
+    showFail('User not found. Please open the app first.');
+    return;
+  }
+
+  const userData = snap.val();
+  const pending = userData.pendingAd;
+
+  // ---- SECURITY CHECKS ----
+  if (!pending || pending.status !== 'pending') {
+    showFail('No pending ad found. You must click "Watch" in the app first.');
+    return;
+  }
+
+  const elapsed = Date.now() - pending.startTime;
+  if (elapsed < MIN_TIME) {
+    showFail(`Too fast! You need to spend at least ${Math.round(MIN_TIME/1000)} seconds on the ad page.`);
+    return;
+  }
+
+  // Check daily limit
+  const today = new Date().toDateString();
+  let todayCount = userData.todayDate === today ? (userData.todayCount || 0) : 0;
+  if (todayCount >= 200) {
+    showFail('Daily limit (200 ads) reached. Come back tomorrow!');
+    return;
+  }
+
+  // ---- ALL CHECKS PASSED ----
+  const reward = pending.reward || 5;
+  const newBalance = (userData.balance || 0) + reward;
+  const newTotal = (userData.totalEarned || 0) + reward;
+
+  await update(userRef, {
+    balance: newBalance,
+    totalEarned: newTotal,
+    todayCount: todayCount + 1,
+    todayDate: today,
+    pendingAd: null
+  });
+
+  // Log history
+  const histRef = ref(db, `users/${userId}/history`);
+  await push(histRef, {
+    type: 'Ad Reward',
+    amount: reward,
+    time: Date.now()
+  });
+
+  showSuccess(reward, newBalance);
+}
+
+function showSuccess(reward, balance) {
+  card.innerHTML = `
+    <div class="icon">🎉</div>
+    <h2>Reward Earned!</h2>
+    <div class="reward-badge">+${reward} pts</div>
+    <p><span class="status-dot ok"></span>Ad view verified successfully</p>
+    <p style="margin-top:8px;">New balance: <strong style="color:#f59e0b">${balance} pts</strong></p>
+    <a href="index.html" class="btn">← Back to Dashboard</a>
+  `;
+}
+
+function showFail(reason) {
+  card.innerHTML = `
+    <div class="icon">❌</div>
+    <h2>Verification Failed</h2>
+    <p><span class="status-dot bad"></span>${reason}</p>
+    <a href="index.html" class="btn fail-btn">← Go Back</a>
+  `;
+}
+
+// Run after short delay for Firebase to settle
+setTimeout(verify, 1500);
+</script>
+</body>
+</html>
