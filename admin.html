@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EarnLoop Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#080c18; --panel:#0f1525; --card:#141d2e;
+    --card2:#1a2540; --accent:#00e5ff; --accent2:#7c3aed;
+    --gold:#f59e0b; --green:#10b981; --red:#ef4444;
+    --text:#f1f5f9; --muted:#64748b; --border:rgba(255,255,255,0.07);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; }
+
+  /* LOGIN */
+  #login-screen {
+    min-height:100vh; display:flex;
+    align-items:center; justify-content:center; padding:20px;
+  }
+  .login-box {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:20px; padding:40px 32px; width:100%; max-width:380px;
+    text-align:center;
+  }
+  .login-box h1 { font-family:'Syne',sans-serif; font-size:26px; font-weight:800; margin-bottom:6px; }
+  .login-box p { color:var(--muted); font-size:13px; margin-bottom:28px; }
+  .login-box input {
+    width:100%; background:var(--card2); border:1px solid var(--border);
+    color:var(--text); border-radius:10px; padding:13px 16px;
+    font-size:14px; font-family:'DM Sans',sans-serif; outline:none;
+    transition:border-color 0.2s; margin-bottom:12px;
+  }
+  .login-box input:focus { border-color:var(--accent); }
+  .login-box button {
+    width:100%; background:linear-gradient(135deg,var(--accent),#0099cc);
+    color:#000; font-weight:700; font-size:15px; font-family:'Syne',sans-serif;
+    border:none; border-radius:10px; padding:13px; cursor:pointer;
+  }
+  .login-err { color:#fca5a5; font-size:13px; margin-top:10px; display:none; }
+
+  /* LAYOUT */
+  #admin-app { display:none; }
+  .admin-header {
+    background:var(--panel); border-bottom:1px solid var(--border);
+    padding:16px 24px; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:50;
+  }
+  .admin-logo {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:20px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  }
+  .logout-btn {
+    background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);
+    color:#fca5a5; font-size:13px; padding:7px 14px; border-radius:8px; cursor:pointer;
+    font-family:'DM Sans',sans-serif;
+  }
+
+  /* TABS */
+  .tabs {
+    display:flex; gap:4px; padding:16px 24px;
+    border-bottom:1px solid var(--border);
+    overflow-x:auto; background:var(--panel);
+  }
+  .tab {
+    padding:8px 18px; border-radius:8px; cursor:pointer;
+    font-size:13px; font-weight:500; white-space:nowrap;
+    color:var(--muted); transition:all 0.2s;
+    background:transparent; border:1px solid transparent;
+  }
+  .tab.active {
+    background:rgba(0,229,255,0.12); border-color:rgba(0,229,255,0.25);
+    color:var(--accent);
+  }
+
+  /* CONTENT */
+  .tab-content { display:none; padding:24px; max-width:1000px; margin:0 auto; }
+  .tab-content.active { display:block; }
+
+  /* STATS */
+  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+  .stat-box {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:14px; padding:18px; text-align:center;
+  }
+  .stat-box .v { font-family:'Syne',sans-serif; font-size:28px; font-weight:800; color:var(--accent); }
+  .stat-box .l { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  /* SECTION */
+  .section { margin-bottom:28px; }
+  .section-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .section-header h3 { font-family:'Syne',sans-serif; font-size:15px; font-weight:700; }
+  .add-btn {
+    background:linear-gradient(135deg,var(--accent2),#5b21b6);
+    color:#fff; font-size:13px; font-weight:600;
+    border:none; border-radius:8px; padding:8px 16px; cursor:pointer;
+    font-family:'Syne',sans-serif;
+  }
+
+  /* FORM */
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+  .form-row.single { grid-template-columns:1fr; }
+  .form-input {
+    background:var(--card2); border:1px solid var(--border);
+    color:var(--text); border-radius:10px; padding:11px 14px;
+    font-size:13px; font-family:'DM Sans',sans-serif; outline:none;
+    transition:border-color 0.2s; width:100%;
+  }
+  .form-input:focus { border-color:var(--accent); }
+  select.form-input option { background:var(--card2); }
+
+  /* TABLE */
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th {
+    text-align:left; padding:10px 14px;
+    font-size:11px; color:var(--muted); font-weight:500;
+    text-transform:uppercase; letter-spacing:0.08em;
+    border-bottom:1px solid var(--border);
+  }
+  td {
+    padding:12px 14px; font-size:13px;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    vertical-align:middle;
+  }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+  .badge {
+    display:inline-block; padding:3px 10px; border-radius:100px;
+    font-size:11px; font-weight:600;
+  }
+  .badge.pending { background:rgba(245,158,11,0.15); color:var(--gold); }
+  .badge.approved { background:rgba(16,185,129,0.15); color:var(--green); }
+  .badge.rejected { background:rgba(239,68,68,0.15); color:#fca5a5; }
+  .badge.active { background:rgba(0,229,255,0.15); color:var(--accent); }
+  .badge.inactive { background:rgba(100,116,139,0.15); color:var(--muted); }
+
+  /* ACTION BTNS */
+  .act-btn {
+    padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600;
+    cursor:pointer; border:none; font-family:'DM Sans',sans-serif; margin-right:4px;
+    transition:opacity 0.2s;
+  }
+  .act-btn:hover { opacity:0.8; }
+  .approve-btn { background:rgba(16,185,129,0.2); color:var(--green); border:1px solid rgba(16,185,129,0.3); }
+  .reject-btn { background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+  .del-btn { background:rgba(239,68,68,0.2); color:#fca5a5; border:1px solid rgba(239,68,68,0.3); }
+  .edit-btn { background:rgba(0,229,255,0.15); color:var(--accent); border:1px solid rgba(0,229,255,0.25); }
+  .toggle-btn { background:rgba(124,58,237,0.2); color:#a78bfa; border:1px solid rgba(124,58,237,0.3); }
+
+  /* CARD FORM */
+  .form-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:16px; padding:20px; margin-bottom:20px;
+  }
+  .form-card h4 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; margin-bottom:16px; }
+  .save-btn {
+    background:linear-gradient(135deg,var(--green),#059669);
+    color:#fff; font-weight:700; font-size:13px; font-family:'Syne',sans-serif;
+    border:none; border-radius:8px; padding:10px 20px; cursor:pointer;
+  }
+
+  /* TOAST */
+  #admin-toast {
+    position:fixed; bottom:24px; right:24px;
+    background:var(--card2); border:1px solid var(--border);
+    color:var(--text); padding:12px 20px; border-radius:12px;
+    font-size:14px; font-weight:500; z-index:999;
+    transform:translateY(80px); opacity:0;
+    transition:all 0.3s ease;
+  }
+  #admin-toast.show { transform:translateY(0); opacity:1; }
+  #admin-toast.success { border-color:rgba(16,185,129,0.4); color:#6ee7b7; }
+  #admin-toast.error { border-color:rgba(239,68,68,0.4); color:#fca5a5; }
+
+  .empty { text-align:center; padding:30px; color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div style="font-size:40px;margin-bottom:12px;">🔐</div>
+    <h1>Admin Panel</h1>
+    <p>EarnLoop Dashboard — Authorized Access Only</p>
+    <input type="password" id="pw-input" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button onclick="doLogin()">Login</button>
+    <p class="login-err" id="login-err">❌ Wrong password</p>
+  </div>
+</div>
+
+<!-- ADMIN APP -->
+<div id="admin-app">
+  <div class="admin-header">
+    <div class="admin-logo">⚡ EarnLoop Admin</div>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('overview')">📊 Overview</div>
+    <div class="tab" onclick="switchTab('ads')">📺 Ads / Links</div>
+    <div class="tab" onclick="switchTab('withdrawals')">💸 Withdrawals</div>
+    <div class="tab" onclick="switchTab('users')">👥 Users</div>
+    <div class="tab" onclick="switchTab('settings')">⚙️ Settings</div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div class="tab-content active" id="tab-overview">
+    <div class="stats-grid" id="overview-stats">
+      <div class="stat-box"><div class="v" id="ov-users">-</div><div class="l">Total Users</div></div>
+      <div class="stat-box"><div class="v" id="ov-ads">-</div><div class="l">Active Ads</div></div>
+      <div class="stat-box"><div class="v" id="ov-pending-wd">-</div><div class="l">Pending Withdrawals</div></div>
+      <div class="stat-box"><div class="v" id="ov-total-paid">-</div><div class="l">Total Paid Out (pts)</div></div>
+    </div>
+    <div class="section">
+      <div class="section-header"><h3>Recent Withdrawal Requests</h3></div>
+      <div class="form-card table-wrap">
+        <table><thead><tr><th>User</th><th>Amount</th><th>Binance UID</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="ov-wd-table"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADS / LINKS -->
+  <div class="tab-content" id="tab-ads">
+    <div class="form-card">
+      <h4>➕ Add New Ad / Short Link</h4>
+      <div class="form-row">
+        <input class="form-input" id="ad-title" placeholder="Ad Title (e.g. Watch Ad #1)" />
+        <input class="form-input" id="ad-icon" placeholder="Icon emoji (e.g. 📺)" />
+      </div>
+      <div class="form-row single">
+        <input class="form-input" id="ad-link" placeholder="ShrinkMe Short Link URL" />
+      </div>
+      <div class="form-row">
+        <input class="form-input" type="number" id="ad-reward" placeholder="Reward points (default 5)" value="5" />
+        <input class="form-input" id="ad-desc" placeholder="Description (optional)" />
+      </div>
+      <button class="save-btn" onclick="addAd()">Add Ad</button>
+    </div>
+
+    <div class="section">
+      <div class="section-header"><h3>All Ads</h3></div>
+      <div class="form-card table-wrap">
+        <table><thead><tr><th>Title</th><th>Link</th><th>Reward</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="ads-table"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- WITHDRAWALS -->
+  <div class="tab-content" id="tab-withdrawals">
+    <div class="section">
+      <div class="section-header"><h3>All Withdrawal Requests</h3></div>
+      <div class="form-card table-wrap">
+        <table><thead><tr><th>User</th><th>Name</th><th>Amount</th><th>Binance UID</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="wd-table"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="tab-content" id="tab-users">
+    <div class="section">
+      <div class="section-header"><h3>All Users</h3></div>
+      <div class="form-card table-wrap">
+        <table><thead><tr><th>Name</th><th>User ID</th><th>Balance</th><th>Total Earned</th><th>Referrals</th><th>Joined</th></tr></thead>
+        <tbody id="users-table"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tab-content" id="tab-settings">
+    <div class="form-card">
+      <h4>⚙️ Global Settings</h4>
+      <div class="form-row">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Points per Ad</label>
+          <input class="form-input" type="number" id="set-pts" placeholder="5" />
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Daily Ad Limit</label>
+          <input class="form-input" type="number" id="set-limit" placeholder="200" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Min Withdrawal (pts)</label>
+          <input class="form-input" type="number" id="set-minwd" placeholder="200" />
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">Required Referrals</label>
+          <input class="form-input" type="number" id="set-refs" placeholder="5" />
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <div class="form-card">
+      <h4>🤖 Telegram Bot Token</h4>
+      <div class="form-row single">
+        <input class="form-input" id="set-bot-token" placeholder="Bot token" value="8738619785:AAGJQu-sXdKS4z0IsZdTeHFMisw6zNldUEM" />
+      </div>
+      <button class="save-btn" onclick="saveBotToken()">Save Token</button>
+    </div>
+  </div>
+</div>
+
+<div id="admin-toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, push, remove, onValue }
+  from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCGqA4NAwLlVuiJ3STGHVAK-NTUChVIa1g",
+  authDomain: "telegram-loop-earn.firebaseapp.com",
+  projectId: "telegram-loop-earn",
+  storageBucket: "telegram-loop-earn.firebasestorage.app",
+  messagingSenderId: "471885155168",
+  appId: "1:471885155168:web:db96e8b861c4cc40d42c05",
+  databaseURL: "https://telegram-loop-earn-default-rtdb.firebaseio.com"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const ADMIN_PW = 'SOUROV@s768768';
+
+window._db = db;
+window._ref = ref;
+window._get = get;
+window._set = set;
+window._update = update;
+window._push = push;
+window._remove = remove;
+
+// AUTH
+window.doLogin = function() {
+  const pw = document.getElementById('pw-input').value;
+  if (pw === ADMIN_PW) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-app').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+  }
+};
+window.logout = function() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-app').style.display = 'none';
+};
+
+// TABS
+window.switchTab = function(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='overview') loadOverview();
+  if (name==='ads') loadAds();
+  if (name==='withdrawals') loadWithdrawals();
+  if (name==='users') loadUsers();
+  if (name==='settings') loadSettings();
+};
+
+async function loadAll() {
+  await loadOverview();
+  loadAds();
+  loadSettings();
+}
+
+// OVERVIEW
+async function loadOverview() {
+  const [usersSnap, adsSnap, wdSnap] = await Promise.all([
+    get(ref(db,'users')),
+    get(ref(db,'ads')),
+    get(ref(db,'withdrawRequests'))
+  ]);
+
+  const users = usersSnap.exists() ? Object.values(usersSnap.val()) : [];
+  const ads = adsSnap.exists() ? Object.values(adsSnap.val()).filter(a=>a.active) : [];
+  const wds = wdSnap.exists() ? Object.entries(wdSnap.val()) : [];
+  const pending = wds.filter(([,w])=>w.status==='pending');
+
+  document.getElementById('ov-users').textContent = users.length;
+  document.getElementById('ov-ads').textContent = ads.length;
+  document.getElementById('ov-pending-wd').textContent = pending.length;
+
+  const totalPaid = wds.filter(([,w])=>w.status==='approved').reduce((s,[,w])=>s+w.amount,0);
+  document.getElementById('ov-total-paid').textContent = totalPaid;
+
+  const tbody = document.getElementById('ov-wd-table');
+  const recent = wds.slice(-10).reverse();
+  if (!recent.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No requests yet</td></tr>'; return;
+  }
+  tbody.innerHTML = recent.map(([id,w]) => `
+    <tr>
+      <td>${w.userId}</td>
+      <td>${w.name}</td>
+      <td><strong>${w.amount}</strong> pts</td>
+      <td style="font-family:monospace;font-size:12px">${w.binanceUid}</td>
+      <td style="color:var(--muted);font-size:12px">${new Date(w.time).toLocaleDateString()}</td>
+      <td><span class="badge ${w.status}">${w.status}</span></td>
+      <td>
+        ${w.status==='pending' ? `
+          <button class="act-btn approve-btn" onclick="approveWd('${id}')">Approve</button>
+          <button class="act-btn reject-btn" onclick="rejectWd('${id}')">Reject</button>
+        ` : '—'}
+      </td>
+    </tr>`).join('');
+}
+
+// ADS
+window.addAd = async function() {
+  const title = document.getElementById('ad-title').value.trim();
+  const link = document.getElementById('ad-link').value.trim();
+  const icon = document.getElementById('ad-icon').value.trim() || '📺';
+  const reward = parseInt(document.getElementById('ad-reward').value) || 5;
+  const desc = document.getElementById('ad-desc').value.trim();
+
+  if (!title || !link) { adminToast('Fill title and link', 'error'); return; }
+
+  const adsRef = ref(db, 'ads');
+  await push(adsRef, { title, link, icon, reward, description: desc, active: true, createdAt: Date.now() });
+
+  document.getElementById('ad-title').value = '';
+  document.getElementById('ad-link').value = '';
+  document.getElementById('ad-icon').value = '';
+  document.getElementById('ad-reward').value = '5';
+  document.getElementById('ad-desc').value = '';
+
+  adminToast('Ad added!', 'success');
+  loadAds();
+};
+
+async function loadAds() {
+  const snap = await get(ref(db, 'ads'));
+  const tbody = document.getElementById('ads-table');
+  if (!snap.exists()) { tbody.innerHTML = '<tr><td colspan="5" class="empty">No ads yet</td></tr>'; return; }
+  const ads = Object.entries(snap.val());
+  tbody.innerHTML = ads.map(([id, ad]) => `
+    <tr>
+      <td>${ad.icon||'📺'} ${ad.title}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--muted)">${ad.link}</td>
+      <td>${ad.reward||5} pts</td>
+      <td><span class="badge ${ad.active?'active':'inactive'}">${ad.active?'Active':'Inactive'}</span></td>
+      <td>
+        <button class="act-btn toggle-btn" onclick="toggleAd('${id}',${!ad.active})">${ad.active?'Disable':'Enable'}</button>
+        <button class="act-btn del-btn" onclick="deleteAd('${id}')">Delete</button>
+      </td>
+    </tr>`).join('');
+}
+
+window.toggleAd = async function(id, val) {
+  await update(ref(db, `ads/${id}`), { active: val });
+  adminToast(`Ad ${val?'enabled':'disabled'}`, 'success');
+  loadAds();
+};
+window.deleteAd = async function(id) {
+  if (!confirm('Delete this ad?')) return;
+  await remove(ref(db, `ads/${id}`));
+  adminToast('Ad deleted', 'success');
+  loadAds();
+};
+
+// WITHDRAWALS
+window.approveWd = async function(id) {
+  await update(ref(db, `withdrawRequests/${id}`), { status: 'approved' });
+  adminToast('Withdrawal approved ✅', 'success');
+  loadWithdrawals(); loadOverview();
+};
+window.rejectWd = async function(id) {
+  const snap = await get(ref(db, `withdrawRequests/${id}`));
+  if (snap.exists()) {
+    const w = snap.val();
+    // Refund
+    const userSnap = await get(ref(db, `users/${w.userId}`));
+    if (userSnap.exists()) {
+      const u = userSnap.val();
+      await update(ref(db, `users/${w.userId}`), { balance: (u.balance||0) + w.amount });
+    }
+    await update(ref(db, `withdrawRequests/${id}`), { status: 'rejected' });
+    adminToast('Rejected & refunded', 'success');
+    loadWithdrawals(); loadOverview();
+  }
+};
+
+async function loadWithdrawals() {
+  const snap = await get(ref(db, 'withdrawRequests'));
+  const tbody = document.getElementById('wd-table');
+  if (!snap.exists()) { tbody.innerHTML = '<tr><td colspan="7" class="empty">No requests</td></tr>'; return; }
+  const wds = Object.entries(snap.val()).reverse();
+  tbody.innerHTML = wds.map(([id, w]) => `
+    <tr>
+      <td style="font-size:12px;color:var(--muted)">${w.userId}</td>
+      <td>${w.name}</td>
+      <td><strong>${w.amount}</strong> pts</td>
+      <td style="font-family:monospace;font-size:12px">${w.binanceUid}</td>
+      <td style="font-size:12px;color:var(--muted)">${new Date(w.time).toLocaleDateString()}</td>
+      <td><span class="badge ${w.status}">${w.status}</span></td>
+      <td>
+        ${w.status==='pending'?`
+          <button class="act-btn approve-btn" onclick="approveWd('${id}')">Approve</button>
+          <button class="act-btn reject-btn" onclick="rejectWd('${id}')">Reject</button>
+        `:'—'}
+      </td>
+    </tr>`).join('');
+}
+
+// USERS
+async function loadUsers() {
+  const snap = await get(ref(db, 'users'));
+  const tbody = document.getElementById('users-table');
+  if (!snap.exists()) { tbody.innerHTML = '<tr><td colspan="6" class="empty">No users</td></tr>'; return; }
+  const users = Object.entries(snap.val());
+  tbody.innerHTML = users.map(([id, u]) => `
+    <tr>
+      <td>${u.name}${u.username?` <span style="color:var(--muted);font-size:11px">@${u.username}</span>`:''}</td>
+      <td style="font-family:monospace;font-size:12px">${id}</td>
+      <td><strong style="color:var(--gold)">${u.balance||0}</strong></td>
+      <td>${u.totalEarned||0}</td>
+      <td>${u.referrals||0}</td>
+      <td style="font-size:12px;color:var(--muted)">${u.joinedAt?new Date(u.joinedAt).toLocaleDateString():'—'}</td>
+    </tr>`).join('');
+}
+
+// SETTINGS
+async function loadSettings() {
+  const snap = await get(ref(db, 'settings'));
+  if (snap.exists()) {
+    const s = snap.val();
+    if (s.pointsPerAd) document.getElementById('set-pts').value = s.pointsPerAd;
+    if (s.dailyLimit) document.getElementById('set-limit').value = s.dailyLimit;
+    if (s.minWithdraw) document.getElementById('set-minwd').value = s.minWithdraw;
+    if (s.requiredReferrals) document.getElementById('set-refs').value = s.requiredReferrals;
+  }
+}
+window.saveSettings = async function() {
+  const pts = parseInt(document.getElementById('set-pts').value);
+  const limit = parseInt(document.getElementById('set-limit').value);
+  const minwd = parseInt(document.getElementById('set-minwd').value);
+  const refs = parseInt(document.getElementById('set-refs').value);
+  await set(ref(db, 'settings'), { pointsPerAd: pts||5, dailyLimit: limit||200, minWithdraw: minwd||200, requiredReferrals: refs||5 });
+  adminToast('Settings saved!', 'success');
+};
+window.saveBotToken = async function() {
+  const token = document.getElementById('set-bot-token').value.trim();
+  if (!token) return;
+  await set(ref(db, 'settings/botToken'), token);
+  adminToast('Bot token saved!', 'success');
+};
+
+// TOAST
+window.adminToast = function(msg, type='') {
+  const t = document.getElementById('admin-toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => { t.className = ''; }, 3000);
+};
+</script>
+</body>
+</html>
